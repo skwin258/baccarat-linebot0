@@ -11,8 +11,9 @@ import os
 app = Flask(__name__)
 
 # ✅ 你的 LINE 金鑰
-line_bot_api = LineBotApi('你的Channel Access Token')
-handler = WebhookHandler('你的Channel Secret')
+line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=
+')
+handler = WebhookHandler('ffc1cfa5f84c08d59253f4f34a835b28')
 
 @app.route("/", methods=['GET'])
 def home():
