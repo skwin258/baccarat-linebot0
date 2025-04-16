@@ -6,13 +6,11 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMess
 from PIL import Image
 import requests
 from io import BytesIO
-import os
 
 app = Flask(__name__)
 
-# ✅ 你的 LINE 金鑰
-line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=
-')
+# ✅ 你的 LINE 金鑰（已填入）
+line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('ffc1cfa5f84c08d59253f4f34a835b28')
 
 @app.route("/", methods=['GET'])
@@ -56,8 +54,8 @@ def handle_image(event):
 
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=f"已收到圖片，已儲存為 {save_path}")
+        TextSendMessage(text=f"✅ 收到圖片，已儲存為 {save_path}")
     )
 
-# ✅ gunicorn 用的 app 入口
+# ✅ gunicorn 找入口用
 app = app
