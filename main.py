@@ -6,6 +6,9 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMess
 from PIL import Image
 import requests
 from io import BytesIO
+import os
+
+from analyzer import analyze_roadmap  # 導入分析模組
 
 app = Flask(__name__)
 
@@ -42,7 +45,7 @@ def handle_message(event):
         TextSendMessage(text=reply)
     )
 
-# ✅ 處理圖片訊息
+# ✅ 處理圖片訊息，並進行分析
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
     message_id = event.message.id
@@ -52,9 +55,19 @@ def handle_image(event):
     save_path = f"received_{message_id}.jpg"
     image.save(save_path)
 
+    # 呼叫分析模組，取得結果
+    result = analyze_roadmap(save_path)
+
+    # 整理回覆訊息
+    response = f"牌路分析結果：\n"
+    response += f"莊：{result['莊']} 次\n閒：{result['閒']} 次\n和：{result['和']} 次\n"
+    response += f"莊勝率：{result['莊勝率']}%\n閒勝率：{result['閒勝率']}%\n"
+    response += result['建議']
+
+    # 回傳 LINE 訊息
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=f"✅ 收到圖片，已儲存為 {save_path}")
+        TextSendMessage(text=response)
     )
 
 # ✅ gunicorn 找入口用
