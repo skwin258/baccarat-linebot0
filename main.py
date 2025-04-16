@@ -13,11 +13,14 @@ handler = WebhookHandler('你的 Channel Secret')
 def home():
     return "你的百家樂分析機器人正在運作中！"
 
-@app.route("/webhook", methods=['POST'])
+@app.route("/webhook", methods=['GET', 'POST'])
 def webhook():
+    if request.method == "GET":
+        return "Webhook URL OK"
+    
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
-
+    
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
