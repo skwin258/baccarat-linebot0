@@ -3,10 +3,12 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image
 import requests
 from io import BytesIO
 import os
+import cv2
+import numpy as np
 
 from analyzer import analyze_roadmap  # 導入分析模組
 
@@ -45,6 +47,27 @@ def handle_message(event):
         TextSendMessage(text=reply)
     )
 
+# ✅ 偵測莊對與閒對小點
+
+def detect_pair_symbols(image_path):
+    image = cv2.imread(image_path)
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # 紅色（莊對）
+    red_lower1 = np.array([0, 100, 100])
+    red_upper1 = np.array([10, 255, 255])
+    red_mask = cv2.inRange(hsv, red_lower1, red_upper1)
+
+    # 藍色（閒對）
+    blue_lower = np.array([100, 100, 100])
+    blue_upper = np.array([130, 255, 255])
+    blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
+
+    red_count = cv2.countNonZero(red_mask)
+    blue_count = cv2.countNonZero(blue_mask)
+
+    return red_count, blue_count
+
 # ✅ 處理圖片訊息，並進行分析
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
@@ -55,22 +78,17 @@ def handle_image(event):
     save_path = f"received_{message_id}.jpg"
     image.save(save_path)
 
-    # 預處理圖片以提高辨識率
-    processed_image = image.convert('L')  # 轉灰階
-    processed_image = ImageOps.autocontrast(processed_image)  # 自動對比
-    processed_image = processed_image.filter(ImageFilter.MedianFilter(size=3))  # 去雜訊
-    processed_image = processed_image.point(lambda x: 0 if x < 128 else 255, '1')  # 二值化
-
-    processed_path = f"processed_{message_id}.png"
-    processed_image.save(processed_path)
-
     # 呼叫分析模組，取得結果
-    result = analyze_roadmap(processed_path)
+    result = analyze_roadmap(save_path)
+
+    # 偵測莊對/閒對小點
+    red_pair_count, blue_pair_count = detect_pair_symbols(save_path)
 
     # 整理回覆訊息
     response = f"牌路分析結果：\n"
     response += f"莊：{result['莊']} 次\n閒：{result['閒']} 次\n和：{result['和']} 次\n"
     response += f"莊勝率：{result['莊勝率']}%\n閒勝率：{result['閒勝率']}%\n"
+    response += f"莊對出現次數：{red_pair_count} 次\n閒對出現次數：{blue_pair_count} 次\n"
     response += result['建議']
 
     # 回傳 LINE 訊息
