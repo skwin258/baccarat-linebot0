@@ -6,7 +6,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 app = Flask(__name__)
 
 # ✅ 你的 LINE 金鑰
-line_bot_api = LineBotApi('b3HrhXDtjJVCFZmCgfwlIdaemUkeinZMzdFxbUsul1kC/ychBdhWbVb5fh91tAvRKn s0N/4l2Z1KooAFP7YsH1H32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsI s7eGsQCnHV9FA5emdFwdB04tB9/10/w1cDnyi1FU=')
+line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('ffc1cfa5f84c08d59253f4f34a835b28')
 
 @app.route("/", methods=['GET'])
