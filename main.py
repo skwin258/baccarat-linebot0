@@ -36,3 +36,6 @@ def handle_message(event):
         event.reply_token,
         TextSendMessage(text=reply)
     )
+
+# ✅ 最重要：讓 gunicorn 找到這個變數
+app = app
