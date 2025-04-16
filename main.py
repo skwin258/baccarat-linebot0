@@ -3,7 +3,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 import requests
 from io import BytesIO
 import os
@@ -55,8 +55,17 @@ def handle_image(event):
     save_path = f"received_{message_id}.jpg"
     image.save(save_path)
 
+    # 預處理圖片以提高辨識率
+    processed_image = image.convert('L')  # 轉灰階
+    processed_image = ImageOps.autocontrast(processed_image)  # 自動對比
+    processed_image = processed_image.filter(ImageFilter.MedianFilter(size=3))  # 去雜訊
+    processed_image = processed_image.point(lambda x: 0 if x < 128 else 255, '1')  # 二值化
+
+    processed_path = f"processed_{message_id}.png"
+    processed_image.save(processed_path)
+
     # 呼叫分析模組，取得結果
-    result = analyze_roadmap(save_path)
+    result = analyze_roadmap(processed_path)
 
     # 整理回覆訊息
     response = f"牌路分析結果：\n"
