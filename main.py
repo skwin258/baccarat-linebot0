@@ -1,7 +1,10 @@
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
+from io import BytesIO
+from PIL import Image
+import pytesseract
 
 app = Flask(__name__)
 
@@ -32,6 +35,23 @@ def webhook():
 def handle_message(event):
     msg = event.message.text
     reply = f"你的輸入是：{msg}"
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply)
+    )
+
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image(event):
+    # 取得圖片內容
+    message_content = line_bot_api.get_message_content(event.message.id)
+    img = Image.open(BytesIO(message_content.content))
+
+    # 執行 OCR 辨識（使用繁體中文 + 英文）
+    text = pytesseract.image_to_string(img, lang='chi_tra+eng')
+
+    # 回傳辨識結果（下一步可分析下注建議）
+    reply = f"辨識結果如下：\n{text.strip() or '（未偵測到文字）'}"
+
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=reply)
