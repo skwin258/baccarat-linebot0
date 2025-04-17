@@ -3,9 +3,11 @@ import random
 from datetime import datetime
 import openai
 
-openai.api_key = "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"
+openai.api_key = "sk-你的key"
 
 user_records = {}
+user_history = {}
+
 
 def ask_gpt(query):
     try:
@@ -21,10 +23,19 @@ def ask_gpt(query):
     except Exception as e:
         return f"⚠️ 無法取得分析：{str(e)}"
 
+
 def analyze_text_roadmap(text, simple=False, user_id=None):
-    # 如果不是指令/牌路格式 → 交給 GPT 分析
+    # 若非格式明確指令，交給 GPT 回覆
     if not re.match(r"^[莊閒和6 ]{2,}$", text.strip()) and "點" not in text and not any(k in text for k in ["術語", "說明", "操作", "贏"]):
         return ask_gpt(text)
+
+    # ✨ 玩家歷史儲存處理
+    if user_id:
+        user_history.setdefault(user_id, [])
+        if re.match(r"^[莊閒和6 ]{2,}$", text.strip()):
+            user_history[user_id].append(text.strip())
+        if len(user_history[user_id]) > 5:
+            user_history[user_id] = user_history[user_id][-5:]
 
     def describe_trend(seq):
         if len(seq) < 4:
@@ -106,6 +117,12 @@ def analyze_text_roadmap(text, simple=False, user_id=None):
         if record:
             return f"🧾 你在 {record['time']} 所紀錄贏分為 {record['amount']} 元"
         return "尚未紀錄，請先輸入『今天我贏3000』這類語句。"
+
+    if text.strip() == "分析紀錄":
+        history = user_history.get(user_id, [])
+        if not history:
+            return "🕹 尚無分析紀錄，請先輸入幾組走勢。"
+        return "🧠 最近分析紀錄：\n" + "\n".join(history)
 
     if re.search(r"[?？]", text):
         if "下" in text:
