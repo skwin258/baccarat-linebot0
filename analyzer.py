@@ -1,34 +1,61 @@
 import cv2
 import numpy as np
+import os
+
+TEMPLATE_DIR = "templates"
+TEMPLATES = {
+    "banker": "banker.png",
+    "player": "player.png",
+    "tie": "tie.png",
+    "lucky6": "lucky6.png",
+
+    "banker_banker_pair": "banker_banker_pair.png",
+    "banker_player_pair": "banker_player_pair.png",
+    "banker_mixed_pair": "banker_mixed_pair.png",
+
+    "player_banker_pair": "player_banker_pair.png",
+    "player_player_pair": "player_player_pair.png",
+    "player_mixed_pair": "player_mixed_pair.png",
+
+    "tie_banker_pair": "tie_banker_pair.png",
+    "tie_player_pair": "tie_player_pair.png",
+    "tie_mixed_pair": "tie_mixed_pair.png",
+
+    "lucky6_banker_pair": "lucky6_banker_pair.png",
+    "lucky6_player_pair": "lucky6_player_pair.png",
+    "lucky6_mixed_pair": "lucky6_mixed_pair.png",
+}
+
+
+def match_template(image, template_path, threshold=0.75):
+    template = cv2.imread(template_path, 0)
+    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+    loc = np.where(res >= threshold)
+    return len(zip(*loc[::-1]))
+
 
 def analyze_roadmap(image_path):
-    img = cv2.imread(image_path)
-    if img is None:
+    image = cv2.imread(image_path)
+    if image is None:
         return "❌ 圖片讀取失敗，請再傳一次。"
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
-    _, thresh = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY_INV)
+    result_count = {key: 0 for key in TEMPLATES.keys()}
 
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for name, filename in TEMPLATES.items():
+        template_path = os.path.join(TEMPLATE_DIR, filename)
+        count = match_template(image, template_path)
+        result_count[name] = count
 
-    banker_count, player_count, tie_count = 0, 0, 0
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        if 10 < w < 60 and 10 < h < 60:
-            roi = img[y:y+h, x:x+w]
-            mean_color = cv2.mean(roi)[:3]
+    # 整合出現次數
+    banker_total = sum(result_count[k] for k in result_count if k.startswith("banker"))
+    player_total = sum(result_count[k] for k in result_count if k.startswith("player"))
+    tie_total = sum(result_count[k] for k in result_count if k.startswith("tie"))
+    lucky6_total = sum(result_count[k] for k in result_count if k.startswith("lucky6"))
 
-            if mean_color[2] > 150 and mean_color[0] < 100:  # 紅 → 莊
-                banker_count += 1
-            elif mean_color[0] > 150 and mean_color[2] < 100:  # 藍 → 閒
-                player_count += 1
-            elif mean_color[1] > 130:  # 綠 → 和
-                tie_count += 1
-
-    total = banker_count + player_count
-    banker_rate = round(banker_count / total * 100, 2) if total else 0
-    player_rate = round(player_count / total * 100, 2) if total else 0
+    total = banker_total + player_total
+    banker_rate = round(banker_total / total * 100, 2) if total else 0
+    player_rate = round(player_total / total * 100, 2) if total else 0
 
     if banker_rate >= 60:
         suggestion = f"✅ 建議下注莊家（勝率 {banker_rate}%）"
@@ -37,4 +64,8 @@ def analyze_roadmap(image_path):
     else:
         suggestion = f"⚠️ 建議觀望，目前無明顯趨勢"
 
-    return f"📊 圖像分析：\n莊：{banker_count} 次\n閒：{player_count} 次\n和：{tie_count} 次\n莊勝率：{banker_rate}%\n閒勝率：{player_rate}%\n{suggestion}"
+    msg = f"📊 模板分析結果：\n"
+    msg += f"莊：{banker_total} 次\n閒：{player_total} 次\n和：{tie_total} 次\n幸運6：{lucky6_total} 次\n"
+    msg += f"莊勝率：{banker_rate}%\n閒勝率：{player_rate}%\n"
+    msg += suggestion
+    return msg
