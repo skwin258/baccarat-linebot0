@@ -9,7 +9,7 @@ import logging
 app = Flask(__name__)
 
 # 設置 OpenAI API 金鑰
-openai.api_key = "sk-你的key"
+openai.api_key = "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"
 
 # 設置日誌
 logging.basicConfig(level=logging.INFO)
