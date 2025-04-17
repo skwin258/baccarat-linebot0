@@ -28,7 +28,14 @@ TEMPLATES = {
 
 def match_template(image, template_path, threshold=0.75):
     template = cv2.imread(template_path, 0)
+    if template is None:
+        return 0
+
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    if img_gray.shape[0] < template.shape[0] or img_gray.shape[1] < template.shape[1]:
+        return 0
+
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
     loc = np.where(res >= threshold)
     return len(list(zip(*loc[::-1])))
@@ -46,10 +53,10 @@ def analyze_roadmap(image_path):
         result_count[name] = count
 
     # 整合出現次數
-    banker_total = sum(result_count[k] for k in result_count if k.startswith("banker"))
-    player_total = sum(result_count[k] for k in result_count if k.startswith("player"))
-    tie_total = sum(result_count[k] for k in result_count if k.startswith("tie"))
-    lucky6_total = sum(result_count[k] for k in result_count if k.startswith("lucky6"))
+    banker_total = sum(result_count[k] for k in result_count if k.startswith("banker") and not k.startswith("banker_"))
+    player_total = sum(result_count[k] for k in result_count if k.startswith("player") and not k.startswith("player_"))
+    tie_total = sum(result_count[k] for k in result_count if k.startswith("tie") and not k.startswith("tie_"))
+    lucky6_total = sum(result_count[k] for k in result_count if k.startswith("lucky6") and not k.startswith("lucky6_"))
 
     total = banker_total + player_total
     banker_rate = round(banker_total / total * 100, 2) if total else 0
