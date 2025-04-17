@@ -4,3 +4,4 @@ gunicorn
 pillow
 pytesseract
 opencv-python
+openai
