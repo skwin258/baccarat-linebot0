@@ -1,96 +1,67 @@
 from flask import Flask, request, abort
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage
-import re
-import os
 import openai
-from analyzer import analyze_text_roadmap, save_chart
+import json
+import re
+from analyzer import analyze_text_roadmap
+import logging
 
+# 初始化 Flask 應用
 app = Flask(__name__)
 
-# LINE API 設定
-line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=')
-handler = WebhookHandler('ffc1cfa5f84c08d59253f4f34a835b28')
+# 設置 OpenAI API 金鑰
+openai.api_key = "sk-你的key"
 
-@app.route("/", methods=['GET'])
-def home():
-    return "你的百家樂分析機器人正在運作中！"
+# 設置日誌
+logging.basicConfig(level=logging.INFO)
 
-@app.route("/webhook", methods=['GET', 'POST'])
+# LINE Bot Webhook URL
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    if request.method == 'GET':
-        return "Webhook URL OK"
-
-    signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
-
     try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
+        # 取得 LINE 訊息
+        body = request.get_data(as_text=True)
+        print(f"Request body: {body}")  # 輸出接收到的請求，方便調試
 
-    return 'OK'
+        # 解析收到的訊息
+        if "events" in body:
+            events = json.loads(body).get("events", [])
+            for event in events:
+                user_message = event.get("message", {}).get("text", "").strip()
 
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    msg = event.message.text
-    user_id = event.source.user_id
-    simple = False
+                # 確保訊息存在且不為空
+                if user_message:
+                    response_message = analyze_text_roadmap(user_message)
+                    # 發送回應訊息至 LINE
+                    send_line_message(event["replyToken"], response_message)
+                else:
+                    print("Received empty message.")
+                    
+        return 'OK', 200
+    except Exception as e:
+        # 如果有錯誤，記錄錯誤訊息
+        logging.error(f"Error processing the webhook: {e}")
+        return 'Error', 500
 
-    if msg.lower() == '簡單版':
-        simple = True
-    elif msg.lower() == '專業版':
-        simple = False
+# 發送 LINE 訊息的函數
+def send_line_message(reply_token, message):
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + '你的LINE BOT Channel Access Token'
+    }
 
-    # 關鍵字查詢
-    response = analyze_text_roadmap(msg, simple=simple, user_id=user_id)
+    payload = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": message}]
+    }
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=response)
-    )
+    # 發送 POST 請求至 LINE API 回傳訊息
+    try:
+        response = requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
+        if response.status_code != 200:
+            logging.error(f"Error sending message: {response.text}")
+    except Exception as e:
+        logging.error(f"Error sending message: {e}")
 
-@handler.add(MessageEvent, message=ImageMessage)
-def handle_image(event):
-    # 處理圖片
-    message_id = event.message.id
-    message_content = line_bot_api.get_message_content(message_id)
-    save_path = f"received_{message_id}.jpg"
-    with open(save_path, "wb") as f:
-        for chunk in message_content.iter_content():
-            f.write(chunk)
-
-    response = analyze_text_roadmap(save_path)
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=response)
-    )
-
-# Flex message example
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message_with_flex(event):
-    msg = event.message.text
-    if "分析圖表" in msg:
-        # 假設用戶輸入要分析圖表
-        seq = msg.split()  # 假設是用戶提供的最新牌局序列
-        chart_url = save_chart(seq)
-        flex_message = FlexSendMessage(
-            alt_text='百家樂結果統計圖',
-            contents={
-                "type": "bubble",
-                "hero": {
-                    "type": "image",
-                    "url": chart_url,
-                    "size": "full",
-                    "aspectMode": "cover"
-                }
-            }
-        )
-        line_bot_api.reply_message(
-            event.reply_token,
-            flex_message
-        )
-
+# 啟動 Flask 伺服器
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
