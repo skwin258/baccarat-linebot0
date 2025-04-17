@@ -26,14 +26,12 @@ TEMPLATES = {
     "lucky6_mixed_pair": "lucky6_mixed_pair.png",
 }
 
-
 def match_template(image, template_path, threshold=0.75):
     template = cv2.imread(template_path, 0)
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
     loc = np.where(res >= threshold)
-    return len(zip(*loc[::-1]))
-
+    return len(list(zip(*loc[::-1])))
 
 def analyze_roadmap(image_path):
     image = cv2.imread(image_path)
