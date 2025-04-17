@@ -1,7 +1,8 @@
+matplotlib
+openai
 flask
 line-bot-sdk
 gunicorn
 pillow
 pytesseract
 opencv-python
-openai
