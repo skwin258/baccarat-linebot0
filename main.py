@@ -1,12 +1,15 @@
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
-from analyzer import analyze_text_roadmap
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage, FlexSendMessage
+import re
+import os
+import openai
+from analyzer import analyze_text_roadmap, save_chart
 
 app = Flask(__name__)
 
-# ✅ 請填入你的 LINE 金鑰
+# LINE API 設定
 line_bot_api = LineBotApi('b3HrhXDjtJVCFZmCcgfwIIdaemUkeinzMZdFxbUsu1WC/ychBdhWbVb5fh91tAvRKns0N/42I2IkooAfP7YsHlH32qyGy+VvupMw3xsh7tdkYpdj8nCmq/6sGVzpl1gzsIs7eGscQCnHVJfASemdFwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('ffc1cfa5f84c08d59253f4f34a835b28')
 
@@ -29,15 +32,65 @@ def webhook():
 
     return 'OK'
 
-# ✅ 處理文字訊息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
-    reply = analyze_text_roadmap(msg)
+    user_id = event.source.user_id
+    simple = False
+
+    if msg.lower() == '簡單版':
+        simple = True
+    elif msg.lower() == '專業版':
+        simple = False
+
+    # 關鍵字查詢
+    response = analyze_text_roadmap(msg, simple=simple, user_id=user_id)
+
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=reply)
+        TextSendMessage(text=response)
     )
 
-# ✅ gunicorn 用的 app 入口
-app = app
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image(event):
+    # 處理圖片
+    message_id = event.message.id
+    message_content = line_bot_api.get_message_content(message_id)
+    save_path = f"received_{message_id}.jpg"
+    with open(save_path, "wb") as f:
+        for chunk in message_content.iter_content():
+            f.write(chunk)
+
+    response = analyze_text_roadmap(save_path)
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=response)
+    )
+
+# Flex message example
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message_with_flex(event):
+    msg = event.message.text
+    if "分析圖表" in msg:
+        # 假設用戶輸入要分析圖表
+        seq = msg.split()  # 假設是用戶提供的最新牌局序列
+        chart_url = save_chart(seq)
+        flex_message = FlexSendMessage(
+            alt_text='百家樂結果統計圖',
+            contents={
+                "type": "bubble",
+                "hero": {
+                    "type": "image",
+                    "url": chart_url,
+                    "size": "full",
+                    "aspectMode": "cover"
+                }
+            }
+        )
+        line_bot_api.reply_message(
+            event.reply_token,
+            flex_message
+        )
+
+if __name__ == "__main__":
+    app.run(debug=True, host='0.0.0.0', port=5000)
