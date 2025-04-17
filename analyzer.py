@@ -1,10 +1,31 @@
 import re
 import random
 from datetime import datetime
+import openai
+
+openai.api_key = "sk-你的key"
 
 user_records = {}
 
+def ask_gpt(query):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "你是百家樂專家，擅長解釋投注策略與走勢分析，請用簡單口語風格回覆玩家問題。"},
+                {"role": "user", "content": query}
+            ],
+            temperature=0.7
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"⚠️ 無法取得分析：{str(e)}"
+
 def analyze_text_roadmap(text, simple=False, user_id=None):
+    # 如果不是指令/牌路格式 → 交給 GPT 分析
+    if not re.match(r"^[莊閒和6 ]{2,}$", text.strip()) and "點" not in text and not any(k in text for k in ["術語", "說明", "操作", "贏"]):
+        return ask_gpt(text)
+
     def describe_trend(seq):
         if len(seq) < 4:
             return "📈 目前牌路尚短，建議多觀察幾局再入場。"
@@ -38,17 +59,14 @@ def analyze_text_roadmap(text, simple=False, user_id=None):
             trends.append(f"{previous}短打")
         last_streak.append(previous)
 
-        # 分析穩定度
         stable_ratio = sum(1 for t in trends if "連" in t) / len(trends)
         stability = "📐 走勢偏穩定，較適合順勢操作。" if stable_ratio >= 0.6 else "📐 走勢偏震盪，建議觀望或短打應對。"
 
-        # 判斷是否為纏鬥盤
         tug_war = switch_count >= len(seq) // 2 and all(len(s) <= 2 for s in trends)
         tug_war_msg = "🤼 目前屬纏鬥盤，莊閒激烈交錯，下注建議採用停看聽策略。" if tug_war else ""
 
         return "📊 走勢觀察：" + "，".join(trends) + "。\n" + stability + ("\n" + tug_war_msg if tug_war_msg else "")
 
-    # 百家樂術語查詢
     if "術語" in text:
         return (
             "📘 常見術語與牌路說明：\n\n"
@@ -65,7 +83,6 @@ def analyze_text_roadmap(text, simple=False, user_id=None):
             "🏠 隔黐：兩局一跳，莊莊閒莊莊閒。"
         )
 
-    # 操作指引關鍵字
     if any(k in text for k in ["說明", "怎麼用", "操作"]):
         return (
             "📗 操作說明：\n"
@@ -76,7 +93,6 @@ def analyze_text_roadmap(text, simple=False, user_id=None):
             "專業版分析：輸入『專業版』"
         )
 
-    # 贏分紀錄功能
     if user_id and re.search(r"贏[\s:]*\d+", text):
         win_amount = re.search(r"贏[\s:]*([0-9]+)", text)
         if win_amount:
@@ -91,14 +107,12 @@ def analyze_text_roadmap(text, simple=False, user_id=None):
             return f"🧾 你在 {record['time']} 所紀錄贏分為 {record['amount']} 元"
         return "尚未紀錄，請先輸入『今天我贏3000』這類語句。"
 
-    # 問句自動引導
     if re.search(r"[?？]", text):
         if "下" in text:
             return "📌 請輸入最近10局結果（如：莊 閒 閒 莊 閒 閒 莊）我幫你分析要不要下。"
         elif "怎麼操作" in text or "怎麼用" in text:
             return "📘 輸入『說明』查看所有功能。"
 
-    # 牌路分析主體
     parts = text.strip().split()
     banker_count = parts.count("莊")
     player_count = parts.count("閒")
