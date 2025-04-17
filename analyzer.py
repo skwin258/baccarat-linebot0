@@ -7,14 +7,13 @@ import io
 import base64
 from tinydb import TinyDB, Query
 
-openai.api_key = "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"  # 記得替換成你的 OpenAI API 金鑰
+openai.api_key = "sk-你的key"
 
 # 🧠 雲端資料庫 (TinyDB 替代，可改為 Supabase/Firebase)
 db = TinyDB('user_data.json')
 user_records = {}
 user_history = {}
 user_balance = {}
-
 
 # 圖表分析函數
 def save_chart(seq):
@@ -38,7 +37,6 @@ def save_chart(seq):
     encoded = base64.b64encode(buf.read()).decode()
     return f"data:image/png;base64,{encoded}"
 
-
 # GPT 模擬智能客服
 def ask_gpt(query):
     try:
@@ -54,7 +52,6 @@ def ask_gpt(query):
     except Exception as e:
         return f"⚠️ 無法取得分析：{str(e)}"
 
-
 # 策略模擬回測（順勢追打）
 def simulate_strategy(seq):
     profit = 0
@@ -65,7 +62,6 @@ def simulate_strategy(seq):
         else:
             profit -= stake
     return f"💸 策略模擬：連打順勢追擊結果 → {profit} 元"
-
 
 # 主分析函數
 def analyze_text_roadmap(text, simple=False, user_id=None):
