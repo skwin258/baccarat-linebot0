@@ -27,18 +27,25 @@ TEMPLATES = {
 }
 
 def match_template(image, template_path, threshold=0.75):
-    template = cv2.imread(template_path, 0)
-    if template is None:
+    template_orig = cv2.imread(template_path, 0)
+    if template_orig is None:
         return 0
 
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    if img_gray.shape[0] < template.shape[0] or img_gray.shape[1] < template.shape[1]:
+    if img_gray.shape[0] < template_orig.shape[0] or img_gray.shape[1] < template_orig.shape[1]:
         return 0
 
-    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-    loc = np.where(res >= threshold)
-    return len(list(zip(*loc[::-1])))
+    count_total = 0
+    for scale in [0.95, 1.0, 1.05]:  # 嘗試縮放 95%、100%、105%
+        template = cv2.resize(template_orig, None, fx=scale, fy=scale)
+        if img_gray.shape[0] < template.shape[0] or img_gray.shape[1] < template.shape[1]:
+            continue
+        res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+        loc = np.where(res >= threshold)
+        count_total += len(list(zip(*loc[::-1])))
+
+    return count_total
 
 def analyze_roadmap(image_path):
     image = cv2.imread(image_path)
