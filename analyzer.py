@@ -26,24 +26,25 @@ TEMPLATES = {
     "lucky6_mixed_pair": "lucky6_mixed_pair.png",
 }
 
-def match_template(image, template_path, threshold=0.75):
+def match_template(image, template_path, threshold=0.7):
     template_orig = cv2.imread(template_path, 0)
     if template_orig is None:
+        print(f"❌ 模板讀取失敗：{template_path}")
         return 0
 
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    if img_gray.shape[0] < template_orig.shape[0] or img_gray.shape[1] < template_orig.shape[1]:
-        return 0
-
     count_total = 0
-    for scale in [0.95, 1.0, 1.05]:  # 嘗試縮放 95%、100%、105%
-        template = cv2.resize(template_orig, None, fx=scale, fy=scale)
-        if img_gray.shape[0] < template.shape[0] or img_gray.shape[1] < template.shape[1]:
-            continue
-        res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-        loc = np.where(res >= threshold)
-        count_total += len(list(zip(*loc[::-1])))
+    for scale in [0.90, 0.95, 1.0, 1.05, 1.10]:  # 更寬鬆的縮放範圍
+        try:
+            template = cv2.resize(template_orig, None, fx=scale, fy=scale)
+            if img_gray.shape[0] < template.shape[0] or img_gray.shape[1] < template.shape[1]:
+                continue
+            res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+            loc = np.where(res >= threshold)
+            count_total += len(list(zip(*loc[::-1])))
+        except Exception as e:
+            print(f"⚠️ 模板比對錯誤：{template_path}, 錯誤：{e}")
 
     return count_total
 
@@ -56,6 +57,9 @@ def analyze_roadmap(image_path):
 
     for name, filename in TEMPLATES.items():
         template_path = os.path.join(TEMPLATE_DIR, filename)
+        if not os.path.exists(template_path):
+            print(f"❌ 模板不存在：{template_path}")
+            continue
         count = match_template(image, template_path)
         result_count[name] = count
 
